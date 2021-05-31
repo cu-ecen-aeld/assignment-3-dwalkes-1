@@ -8,8 +8,7 @@ set -u
 NUMFILES=10
 WRITESTR=AESD_IS_AWESOME
 WRITEDIR=/tmp/aesd-data
-# obtain the username from conf/username.txt
-USERNAME=$(cat conf/username.txt)
+username=$(cat conf/username.txt)
 
 if [ $# -lt 2 ]
 then
@@ -42,17 +41,15 @@ else
 	exit 1
 fi
 
-# ----------------------------------------------------
-# YOUR CODE BELOW: the example implementation only writes one file
-# You need to modify it to write the number of files passed as the NUMFILES parameter
-# And customize the written filename with numbers 1-10 as specified in the assignment
+#echo "Removing the old writer utility and compiling as a native application"
+#make clean
+#make
 
-#./writer.sh "$WRITEDIR/$USERNAME.txt" "$WRITESTR"
+for i in $( seq 1 $NUMFILES)
+do
+	./writer "$WRITEDIR/${username}$i.txt" "$WRITESTR"
+done
 
-# ----------------------------------------------------
-# End of your code modifications.
-
-# Invoke the finder shell script and save the output in OUTPUTSTRING
 OUTPUTSTRING=$(./finder.sh "$WRITEDIR" "$WRITESTR")
 
 set +e
