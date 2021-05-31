@@ -9,7 +9,7 @@ jobs:
             name: Checkout submodules
           - uses: textbook/git-checkout-submodule-action@2.1.1
           - run: ./unit-test.sh
-    test:
+    full-test:
         container: cuaesd/aesd-autotest:assignment3
         runs-on: self-hosted
         steps:
