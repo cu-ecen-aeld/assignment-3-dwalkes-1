@@ -9,15 +9,72 @@
 */
 bool do_system(const char *cmd)
 {
+    bool success =  false;
+    int ret = system(cmd);
 
-/*
- * TODO  add your code here
- *  Call the system() function with the command set in the dmd
- *   and return a boolean true if the system() call completed with success 
- *   or false() if it returned a failure
-*/
+    if ( ret != -1 && WEXITSTATUS(ret) == 0 ) {
+        success = true;
+    }
+   
+    return success;
+}
 
-    return true;
+/**
+ * @param command - the command array argv
+ * @param redirect_file_may_be_null - when not null, the filename to use as
+ * output redirect.
+ * @return true on success, false on error
+ */
+static bool do_exec_redirect_to_file(char **command, const char *redirect_file_may_be_null)
+{
+    bool success = false;
+    int pid; 
+    if ((pid = fork()) < 0) {     /* fork a child process           */
+        printf("*** ERROR: forking child process failed with %s\n",strerror(errno));
+    } else {
+        if(pid == 0){
+            int ret;
+            /**
+             * This is the child process
+             * Assuming we can successfully execute the command, the exit code
+             * will be the exit from the command.
+             * However, if we can't successfully start the command we will
+             * need to exit with failure here so the parent catches the failed
+             * exit code
+             */
+            if( redirect_file_may_be_null != NULL ) {
+                int fd = open(redirect_file_may_be_null, O_WRONLY|O_TRUNC|O_CREAT, 0644);
+                if (fd < 0)
+                {
+                    printf("open failed for file %s",redirect_file_may_be_null);
+                    exit(EXIT_FAILURE);
+                }
+                if (dup2(fd, 1) < 0)
+                {
+                    perror("dup2 failed");
+                    exit(EXIT_FAILURE);
+                }
+                close(fd);
+            }
+            if ((ret = execv(command[0], command)) < 0) {     /* execute the command  */
+                printf("*** ERROR: exec failed with return value %d\n",ret);
+                fprintf(stderr, "execv: %s error: %s\n", command[0], strerror(errno));
+                exit(EXIT_FAILURE);
+            }
+       } else {          /* for the parent process:         */
+            int status;
+            int return_value;
+            while (wait(&status) != pid)       /* wait for completion  */
+                ;
+            return_value = WEXITSTATUS(status);
+            if(return_value != 0) {
+                printf("Command %s returned not zero exit code %d\n",command[0],return_value);
+            } else {
+                success = true;
+            }
+        }
+    }
+    return success;
 }
 
 /**
@@ -33,67 +90,51 @@ bool do_system(const char *cmd)
 *   fork, waitpid, or execv() command, or if a non-zero return value was returned
 *   by the command issued in @param arguments with the specified arguments.
 */
-
 bool do_exec(int count, ...)
 {
     va_list args;
     va_start(args, count);
     char * command[count+1];
+    bool success = false;
     int i;
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
     }
     command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
 
-/*
- * TODO:
- *   Execute a system command by calling fork, execv(),
- *   and wait instead of system (see LSP page 161).
- *   Use the command[0] as the full path to the command to execute
- *   (first argument to execv), and use the remaining arguments
- *   as second argument to the execv() command.
- *   
-*/
+    if( count > 0 ) {
+        success = do_exec_redirect_to_file(command,NULL);
+    }
 
     va_end(args);
-
-    return true;
+    return success;
 }
+
 
 /**
 * @param outputfile - The full path to the file to write with command output.  
 *   This file will be closed at completion of the function call.
-* All other parameters, see do_exec above
+* for documentation of all other parameters, see do_exec above
 */
 bool do_exec_redirect(const char *outputfile, int count, ...)
 {
     va_list args;
     va_start(args, count);
     char * command[count+1];
+    bool success = false;
     int i;
     for(i=0; i<count; i++)
     {
         command[i] = va_arg(args, char *);
     }
     command[count] = NULL;
-    // this line is to avoid a compile warning before your implementation is complete
-    // and may be removed
-    command[count] = command[count];
 
+    if( count > 0 ) {
+        success = do_exec_redirect_to_file(command,outputfile);
+    }
 
-/*
- * TODO
- *   Call execv, but first using https://stackoverflow.com/a/13784315/1446624 as a refernce,
- *   redirect standard out to a file specified by outputfile.
- *   The rest of the behaviour is same as do_exec()
- *   
-*/
 
     va_end(args);
-    
-    return true;
+    return success;
 }
